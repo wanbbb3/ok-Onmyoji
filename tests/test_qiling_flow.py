@@ -6,7 +6,7 @@ import re
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import cv2
 import numpy as np
@@ -17,7 +17,7 @@ from src.tasks.QiLingTask import (BINDING_PAGE_OCR, HOME_VERTICAL_OCR_REGION, HO
                                   TARGET_TO_SUPPORT_RETRY_SECONDS,
                                   _home_vertical_reference, _match_reference,
                                   _marker_matches_friend, _checkbox_tick_visible,
-                                  _checkbox_changed)
+                                  _checkbox_changed, _role_by_window_area)
 
 
 ROOT = Path(__file__).resolve().parents[1] / "assets" / "qiling_reference"
@@ -31,6 +31,43 @@ def screenshot(name):
 
 
 class QiLingFlowTest(unittest.TestCase):
+    def test_window_area_assigns_roles_from_selected_game_window(self):
+        windows = [(101, 0, 0, 1600, 900), (202, 30, 20, 1280, 720)]
+        self.assertEqual(_role_by_window_area(101, windows), "队长")
+        self.assertEqual(_role_by_window_area(202, windows), "队员")
+        self.assertIsNone(_role_by_window_area(303, windows))
+
+    def test_window_area_tie_uses_top_left_window(self):
+        windows = [(101, 100, 50, 1280, 720), (202, 20, 10, 1280, 720)]
+        self.assertEqual(_role_by_window_area(202, windows), "队长")
+        self.assertEqual(_role_by_window_area(101, windows), "队员")
+
+    @patch("ok.util.window.get_window_bounds")
+    @patch("ok.util.window.find_all_visible_windows")
+    def test_auto_role_uses_selected_hwnd_and_can_be_disabled(self, find_windows, bounds):
+        find_windows.return_value = [
+            (101, "阴阳师", "onmyoji.exe", ""),
+            (202, "阴阳师", "onmyoji_future.exe", ""),
+            (303, "其他", "notepad.exe", ""),
+        ]
+        bounds.side_effect = lambda hwnd: (
+            (0, 0, 1600, 900, 1600, 900, 1) if hwnd == 101 else
+            (20, 20, 1280, 720, 1280, 720, 1)
+        )
+        task = SimpleNamespace(
+            config={"角色": "队长", "按窗口面积自动分配角色": True},
+            executor=SimpleNamespace(device_manager=SimpleNamespace(config={"selected_hwnd": 202})),
+            log_info=MagicMock(),
+        )
+        QiLingTask._assign_role_by_window_area(task)
+        self.assertEqual(task.config["角色"], "队员")
+        self.assertEqual(bounds.call_count, 2)
+
+        task.config["按窗口面积自动分配角色"] = False
+        task.config["角色"] = "队长"
+        QiLingTask._assign_role_by_window_area(task)
+        self.assertEqual(task.config["角色"], "队长")
+
     def test_dedicated_qiling_feature_set_finds_challenge(self):
         task = QiLingTask(MagicMock(), MagicMock())
         box = task.find_one("挑战", 1.0, 1.0, threshold=.8, frame=screenshot("1.png"))

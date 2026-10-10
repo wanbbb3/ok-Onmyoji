@@ -336,6 +336,15 @@ def _default_role_for(index):
     return "队长" if index in (0, 1) else "队员"
 
 
+def _role_by_window_area(selected_hwnd, windows):
+    """在已发现的桌面游戏窗口中，面积最大者为队长；同面积取左上角。"""
+    if not windows or selected_hwnd not in {window[0] for window in windows}:
+        return None
+    captain = max(windows, key=lambda window: (window[3] * window[4],
+                                                -window[2], -window[1], -window[0]))
+    return "队长" if selected_hwnd == captain[0] else "队员"
+
+
 def _invite_name_pattern(name):
     """匹配所配置的好友名；默认名称兼容已知的 OCR 形近字。"""
     if name == DEFAULT_INVITE_NAME:
@@ -362,6 +371,7 @@ class QiLingTask(BaseOmjTask):
 
         self.default_config.update({
             "角色": _default_role_for(self.instance_index),
+            "按窗口面积自动分配角色": True,
             "邀请好友名": DEFAULT_INVITE_NAME,
             "匹配阈值": 0.8,
             "备份阈值": 0.7,
@@ -372,6 +382,8 @@ class QiLingTask(BaseOmjTask):
         self.config_description.update({
             "角色": "本窗口担任的角色：队长负责建房邀请，队员负责接受邀请和准备。"
                     "多开时每个实例独立保存角色；运行中修改也会生效。",
+            "按窗口面积自动分配角色": "任务开始时按已打开的桌面游戏窗口像素面积分配：最大窗口为队长，"
+                                  "其余为队员。关闭此项后使用上面的手动角色设置。",
             "邀请好友名": "队长在跨区邀请列表中识别并点击的队员游戏名。请填写完整名称；运行中修改后会重新识别。",
             "匹配阈值": "主模板的相似度及格线（0~1，默认 0.8）。匹配 = 在画面上找和模板最像的位置，"
                       "相似度达到这个值才算找到。画面变化大导致偶尔找不到时可降到 0.75 左右；"
@@ -426,6 +438,30 @@ class QiLingTask(BaseOmjTask):
     def _invite_target_name(self):
         name = self.config.get("邀请好友名", DEFAULT_INVITE_NAME)
         return name.strip() if isinstance(name, str) and name.strip() else DEFAULT_INVITE_NAME
+
+    def _assign_role_by_window_area(self):
+        if not self.config.get("按窗口面积自动分配角色", True):
+            return
+        device_config = getattr(getattr(self.executor, "device_manager", None), "config", None)
+        selected = device_config.get("selected_hwnd", 0) if device_config is not None else 0
+        try:
+            selected = int(selected)
+        except (TypeError, ValueError):
+            return
+        if not selected:
+            return
+        from ok.util.window import find_all_visible_windows, get_window_bounds
+        windows = []
+        for hwnd, _, exe_name, _ in find_all_visible_windows():
+            if Path(exe_name or "").name.lower() not in {"onmyoji.exe", "onmyoji_future.exe"}:
+                continue
+            x, y, _, _, width, height, _ = get_window_bounds(hwnd)
+            if width > 0 and height > 0:
+                windows.append((hwnd, x, y, width, height))
+        role = _role_by_window_area(selected, windows)
+        if role is not None and role != self.config.get("角色"):
+            self.config["角色"] = role
+            self.log_info(f"按游戏窗口面积自动分配：当前实例为{role}")
 
     # ------------------------------------------------------------------ 模板与阈值
     def _threshold(self, is_backup=False):
@@ -536,6 +572,7 @@ class QiLingTask(BaseOmjTask):
                 notify=True,
             )
             return
+        self._assign_role_by_window_area()
         self.log_info("契灵任务开始运行（角色每轮按配置面板刷新）")
         rounds = 0
         self._last_step = -1

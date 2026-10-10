@@ -26,7 +26,7 @@ Set-Location 'C:\Users\wanbi\Desktop\okscript\ok-Onmyoji'
 
 也可以只启动第一个实例，再在应用的“多开助手”选择编号 2 并点击“打开新窗口”；它会使用同一个虚拟环境启动第二个实例。
 
-每个实例在软件内选择各自的游戏窗口，并先用“截图”按钮确认截图正常。桌面专版选 Windows 游戏窗口（`onmyoji.exe` 或 `onmyoji_future.exe`），使用 WGC 截图和 PostMessage 点击；不要选普通模拟器的 ADB 设备。两个实例的任务设置分别保存在 `configs/QiLingTask.json` 和 `configs/instance_2/QiLingTask.json`。在任务设置里核对“队长 / 队员”和“邀请好友名”，再分别点击开始。本地配置目录已被 Git 忽略，更新代码不会覆盖这些设置。
+每个实例在软件内选择各自的游戏窗口，并先用“截图”按钮确认截图正常。桌面专版选 Windows 游戏窗口（`onmyoji.exe` 或 `onmyoji_future.exe`），使用 WGC 截图和 PostMessage 点击；不要选普通模拟器的 ADB 设备。两个实例的任务设置分别保存在 `configs/QiLingTask.json` 和 `configs/instance_2/QiLingTask.json`。在任务设置里核对“邀请好友名”，再分别点击开始。默认开启“按窗口面积自动分配角色”：任务开始时，已选中的桌面游戏窗口中面积最大者为队长，其余为队员。先把队长窗口调大，并确认两个实例各自选中了不同的游戏窗口；如需固定角色，关闭此选项并分别设置“角色”。本地配置目录已被 Git 忽略，更新代码不会覆盖这些设置。
 
 ## 素材和上游更新
 
