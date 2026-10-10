@@ -86,7 +86,7 @@ config = {
         }
     },
     'windows': {  # Windows游戏请填写此设置
-        'exe': ['onmyoji.exe','MuMuNxDevice.exe'],
+        'exe': ['onmyoji.exe', 'onmyoji_future.exe', 'MuMuNxDevice.exe'],
         # optional, if set, will search the exe only
         # 'hwnd_class': 'UnrealWindow', #增加重名检查准确度
         'interaction': ['PostMessage'], # Genshin:某些操作可以后台, 部分游戏支持 PostMessage:可后台点击, 极少游戏支持 ForegroundPostMessage:前台使用PostMessage Pynput/PyDirect:仅支持前台使用
@@ -150,6 +150,7 @@ config = {
         # ── 战斗 ──
         ["src.tasks.SoulZonesTask", "SoulZonesTask"],
         ["src.tasks.ExplorationTask", "ExplorationTask"],
+        ["src.tasks.QiLingTask", "QiLingTask"],
         ["src.tasks.AwakeTask", "AwakeTask"],
 
         # ── 周常 ──
